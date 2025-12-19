@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="min-h-screen bg-gray-50 py-12 px-6">
+  <!-- Header -->
+  <div class="max-w-6xl mx-auto text-center mb-12">
+    <h1 class="text-5xl font-bold text-[#073a3b] mb-4">
+      Welcome, {{ current_user.full_name }}!
+    </h1>
+    <p class="text-2xl text-gray-600">Select a doctor to communicate with</p>
+  </div>
+
+  <!-- Doctors Grid -->
+  <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+    {% if doctors %}
+      {% for doctor in doctors %}
+      <div class="bg-white rounded-2xl shadow-lg hover:shadow-xl transition overflow-hidden">
+        <!-- Doctor Card Header -->
+        <div class="bg-gradient-to-r from-[#073a3b] to-[#0a4a4c] p-6 text-white text-center">
+          <i class="fas fa-stethoscope text-5xl mb-3"></i>
+          <h2 class="text-2xl font-bold">{{ doctor.full_name }}</h2>
+          <p class="text-sm opacity-90">Doctor</p>
+        </div>
+
+        <!-- Doctor Card Body -->
+        <div class="p-6 space-y-4">
+          <!-- Email -->
+          <div class="flex items-center gap-3 text-gray-700">
+            <i class="fas fa-envelope text-[#fe6449] text-lg"></i>
+            <span class="text-sm">{{ doctor.email }}</span>
+          </div>
+
+          <!-- Select Button -->
+          <a href="{{ url_for('dashboard.patient', doctor_id=doctor.id) }}"
+             class="block w-full py-3 bg-[#073a3b] text-white rounded-xl hover:bg-[#052d2e] transition font-semibold text-center">
+            <i class="fas fa-arrow-right mr-2"></i>Select Doctor
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="col-span-full bg-white rounded-2xl shadow-lg p-12 text-center">
+        <i class="fas fa-user-md text-gray-300 text-6xl mb-4"></i>
+        <h3 class="text-2xl font-bold text-gray-900 mb-2">No Doctors Available</h3>
+        <p class="text-gray-600">Please contact support.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Logout -->
+  <div class="text-center mt-12">
+    <a href="{{ url_for('auth.logout') }}" class="text-[#fe6449] text-lg font-semibold hover:underline">
+      Logout
+    </a>
+  </div>
+</div>
+
+{% endblock %}

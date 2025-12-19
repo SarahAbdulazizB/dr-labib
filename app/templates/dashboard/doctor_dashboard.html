@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="min-h-screen bg-gray-50 py-8 px-4">
+  <!-- Header -->
+  <div class="max-w-6xl mx-auto mb-8">
+    <h1 class="text-4xl font-bold text-[#073a3b] mb-2">
+      Welcome, Dr. {{ current_user.full_name }}
+    </h1>
+    <p class="text-xl text-gray-600">Pending patient messages</p>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="bg-white rounded-2xl shadow-lg p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-gray-600 text-sm">Pending</p>
+          <p class="text-3xl font-bold text-[#073a3b]">{{ stats.pending }}</p>
+        </div>
+        <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+          <i class="fas fa-clock text-yellow-600 text-xl"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-lg p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-gray-600 text-sm">Responded</p>
+          <p class="text-3xl font-bold text-[#073a3b]">{{ stats.responded }}</p>
+        </div>
+        <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+          <i class="fas fa-check text-green-600 text-xl"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-lg p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-gray-600 text-sm">Total Today</p>
+          <p class="text-3xl font-bold text-[#073a3b]">{{ stats.total }}</p>
+        </div>
+        <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+          <i class="fas fa-users text-blue-600 text-xl"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile & Logout Links -->
+  <div class="max-w-6xl mx-auto grid grid-cols-2 gap-4 mb-8">
+    <a href="{{ url_for('auth.complete_profile') }}"
+       class="text-center py-4 bg-white rounded-xl shadow-lg hover:shadow-xl transition">
+      <i class="fas fa-user text-[#073a3b] text-2xl mb-2"></i>
+      <p class="text-lg font-semibold text-[#073a3b]">Edit Profile</p>
+    </a>
+    <a href="{{ url_for('auth.logout') }}"
+       class="text-center py-4 bg-white rounded-xl shadow-lg hover:shadow-xl transition">
+      <i class="fas fa-sign-out-alt text-[#fe6449] text-2xl mb-2"></i>
+      <p class="text-lg font-semibold text-[#fe6449]">Logout</p>
+    </a>
+  </div>
+
+  <!-- Pending Messages -->
+  <div class="max-w-6xl mx-auto space-y-4">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">Pending Messages</h2>
+    
+    {% if conversations %}
+      {% for conv in conversations %}
+      <div class="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition">
+        <div class="flex justify-between items-start mb-4">
+          <div>
+            <h3 class="text-xl font-bold text-gray-900">{{ conv.patient_name }}</h3>
+            <p class="text-sm text-gray-500">{{ conv.timestamp }}</p>
+          </div>
+          <span class="px-4 py-2 rounded-full bg-yellow-100 text-yellow-800 text-sm font-semibold">
+            New
+          </span>
+        </div>
+
+        <!-- Patient Message (Translated) -->
+        <div class="bg-gray-50 rounded-xl p-4 mb-4">
+          <p class="text-sm text-gray-600 mb-2">Patient's message (translated from sign language):</p>
+          <p class="text-gray-900 font-medium text-lg">{{ conv.translated_text }}</p>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex gap-3">
+          <a href="{{ url_for('dashboard.conversation', conv_id=conv.id) }}"
+             class="flex-1 text-center py-3 bg-[#073a3b] text-white rounded-xl hover:bg-[#052d2e] transition font-semibold">
+            Open Conversation
+          </a>
+          {% if conv.patient_video_path %}
+          <a href="{{ conv.patient_video_path }}" target="_blank"
+             class="px-6 py-3 border-2 border-[#073a3b] text-[#073a3b] rounded-xl hover:bg-[#073a3b] hover:text-white transition">
+            <i class="fas fa-play mr-2"></i> Watch Video
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="bg-white rounded-2xl shadow-lg p-12 text-center">
+        <i class="fas fa-inbox text-gray-300 text-6xl mb-4"></i>
+        <h3 class="text-2xl font-bold text-gray-900 mb-2">No pending messages</h3>
+        <p class="text-gray-600">All caught up! New patient messages will appear here.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

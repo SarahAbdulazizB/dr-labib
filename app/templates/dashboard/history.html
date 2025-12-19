@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="min-h-screen bg-gray-50 py-8 px-4">
+  <!-- Header -->
+  <div class="max-w-6xl mx-auto mb-8">
+    <div class="flex justify-between items-center">
+      <h1 class="text-4xl font-bold text-[#073a3b]">My Conversations</h1>
+      <a href="{{ url_for('dashboard.select_doctor') }}" 
+         class="px-6 py-3 bg-[#073a3b] text-white rounded-xl hover:bg-[#052d2e] transition">
+        ← Back to Doctor Selection
+      </a>
+    </div>
+  </div>
+
+  <!-- Conversations List -->
+  <div class="max-w-6xl mx-auto space-y-4">
+    {% if conversations %}
+      {% for conv in conversations %}
+      <div class="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition">
+        <div class="flex justify-between items-start mb-4">
+          <div>
+            <h3 class="text-xl font-bold text-gray-900">
+              {% if conv.status == 'pending' %}
+                ⏳ Waiting for Doctor Response
+              {% elif conv.status == 'responded' %}
+                ✅ Doctor Replied
+              {% else %}
+                🔒 Closed
+              {% endif %}
+            </h3>
+            <p class="text-sm text-gray-500 mt-1">{{ conv.timestamp|default('N/A') }}</p>
+          </div>
+          
+          <span class="px-4 py-2 rounded-full text-sm font-semibold
+                       {% if conv.status == 'pending' %}bg-yellow-100 text-yellow-800
+                       {% elif conv.status == 'responded' %}bg-green-100 text-green-800
+                       {% else %}bg-gray-100 text-gray-800{% endif %}">
+            {{ conv.status|title }}
+          </span>
+        </div>
+
+        <!-- Your Message -->
+        <div class="bg-gray-50 rounded-xl p-4 mb-4">
+          <p class="text-sm text-gray-600 mb-2">Your message (translated):</p>
+          <p class="text-gray-900 font-medium">{{ conv.translated_text or 'Processing...' }}</p>
+        </div>
+
+        <!-- Doctor Response (if exists) -->
+        {% if conv.doctor_response_text %}
+        <div class="bg-blue-50 rounded-xl p-4 mb-4">
+          <p class="text-sm text-blue-600 mb-2">Doctor's response:</p>
+          <p class="text-gray-900 font-medium">{{ conv.doctor_response_text }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Actions -->
+        <div class="flex gap-3">
+          <a href="{{ url_for('dashboard.conversation', conv_id=conv.id) }}"
+             class="flex-1 text-center py-3 bg-[#073a3b] text-white rounded-xl hover:bg-[#052d2e] transition">
+            View Conversation
+          </a>
+          {% if conv.patient_video_path %}
+          <a href="{{ conv.patient_video_path }}" target="_blank"
+             class="px-6 py-3 border-2 border-[#073a3b] text-[#073a3b] rounded-xl hover:bg-[#073a3b] hover:text-white transition">
+            <i class="fas fa-play mr-2"></i> Watch Video
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="bg-white rounded-2xl shadow-lg p-12 text-center">
+        <i class="fas fa-comments text-gray-300 text-6xl mb-4"></i>
+        <h3 class="text-2xl font-bold text-gray-900 mb-2">No conversations yet</h3>
+        <p class="text-gray-600 mb-6">Start by uploading your first sign language video</p>
+        <a href="{{ url_for('dashboard.select_doctor') }}"
+           class="inline-block px-8 py-4 bg-[#073a3b] text-white rounded-xl hover:bg-[#052d2e] transition">
+          Select Doctor & Upload Video
+        </a>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Logout -->
+  <div class="text-center mt-12">
+    <a href="{{ url_for('auth.logout') }}" class="text-[#fe6449] text-lg font-semibold hover:underline">
+      Logout
+    </a>
+  </div>
+</div>
+
+{% endblock %}

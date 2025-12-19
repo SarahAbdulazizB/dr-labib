@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+  <!-- Logo + Title -->
+  <div class="sm:mx-auto sm:w-full sm:max-w-md">
+    <div class="flex justify-center">
+      <!-- logo SVG -->
+      <img src="{{ url_for('static', filename='img/icons/logo-hand.svg') }}" alt="Dr. Labib" class="h-20 w-auto">
+    </div>
+    <h2 class="text-5xl font-bold text-[#fe6449]">Dr. Labib</h2>
+    <p class="mt-2 text-center text-lg text-gray-600">Sign in to continue</p>
+  </div>
+
+  <div class="mt-mt-20 sm:mx-auto sm:w-full sm:max-w-md">
+    <div class="bg-white py-12 px-10 shadow-xl rounded-2xl">
+      <form class="space-y-8" method="POST" action="{{ url_for('auth.login') }}">
+        {{ form.hidden_tag() }}
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div
+          class="mb-6 p-4 rounded-xl text-center font-medium 
+                    {% if category == 'success' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+          {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <!-- Email Field -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+          <div class="relative">
+            {{ form.email(class="w-full px-5 py-5 border border-gray-300 rounded-xl text-lg placeholder-gray-400
+            focus:outline-none focus:ring-2 focus:ring-[#073a3b]", placeholder="Enter your email") }}
+            {% if form.email.errors %}
+            <p class="text-red-500 text-sm mt-1">{{ form.email.errors[0] }}</p>
+            {% endif %}
+            <div class="absolute inset-y-0 right-0 pr-5 flex items-center pointer-events-none">
+              <i class="fas fa-envelope text-[#073a3b] text-lg"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Password Field -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+          <div class="relative">
+            {{ form.password(class="w-full px-5 py-5 border border-gray-300 rounded-xl text-lg placeholder-gray-400
+            focus:outline-none focus:ring-2 focus:ring-[#073a3b]", placeholder="Enter your password") }}
+            {% if form.password.errors %}
+            <p class="text-red-500 text-sm mt-1">{{ form.password.errors[0] }}</p>
+            {% endif %}
+            <div class="absolute inset-y-0 right-0 pr-5 flex items-center pointer-events-none">
+              <i class="fas fa-lock text-[#073a3b] text-lg"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Forgot Password -->
+        <div class="text-right">
+          <a href="{{ url_for('auth.forgot_password') }}" class="text-[#fe6449] hover:text-[#e55a42]">Forgot your
+            password?</a>
+        </div>
+
+        <!-- Submit Button -->
+        <div>
+          {{ form.submit(class="w-full py-4 rounded-xl text-lg font-bold text-white bg-[#073a3b] hover:bg-[#052d2e]
+          transition") }}
+        </div>
+
+        <!-- Sign Up Link -->
+        <div class="mt-10 text-center">
+          <p class="text-lg text-gray-600">
+            Don't have an account?
+            <a href="{{ url_for('auth.signup') }}" class="font-medium text-[#fe6449] hover:text-[#e55a42]">Sign up</a>
+          </p>
+        </div>
+      </form>
+      
+  </div>
+</div>
+
+
+<!-- Bottom Long Hands Illustration -->
+<div class="mt-12 flex justify-center items-end space-x-8 opacity-80">
+  <img src="{{ url_for('static', filename='img/icons/bottom-decoration.svg') }}" alt=""
+    class="w-full max-w-2xl opacity-75">
+</div>
+</div>
+{% endblock %}

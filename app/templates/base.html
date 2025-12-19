@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dr. Labib</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script 
+      src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/js/all.min.js" 
+      integrity="sha512-..." 
+      crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+    --color-primary: #073a3b;
+    --color-accent: #fe6449;
+  }
+  .bg-primary { background-color: var(--color-primary); }
+  .text-primary { color: var(--color-primary); }
+  .hover\:bg-primary:hover { background-color: #052d2e; }
+  .ring-primary { --tw-ring-color: #073a3b; }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="h-full">
+    {% if current_user.is_authenticated %}
+      {% include 'partials/navbar.html' %}
+    {% endif %}
+    
+    <main class="min-h-screen bg-gray-50">
+      {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

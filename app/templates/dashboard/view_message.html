@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="min-h-screen bg-gray-50 py-8 px-4">
+  <div class="max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="mb-8">
+      <a href="{{ url_for('dashboard.history') }}" 
+         class="text-[#073a3b] hover:underline mb-4 inline-block">
+        ← Back to History
+      </a>
+      <h1 class="text-4xl font-bold text-[#073a3b]">Conversation Details</h1>
+    </div>
+
+    <!-- Status Banner -->
+    <div class="mb-6 p-4 rounded-xl text-center font-semibold
+                {% if conv[6] == 'pending' or conv['status'] == 'pending' %}bg-yellow-100 text-yellow-800
+                {% elif conv[6] == 'responded' or conv['status'] == 'responded' %}bg-green-100 text-green-800
+                {% else %}bg-gray-100 text-gray-800{% endif %}">
+      Status: {{ (conv[6] or conv['status'])|title }}
+    </div>
+
+    <!-- Your Video Message -->
+    <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-900 mb-4">Your Video Message</h2>
+      <video controls class="w-full rounded-xl bg-black mb-4">
+        <source src="{{ conv[3] or conv['patient_video_path'] }}" type="video/webm">
+      </video>
+      
+      <div class="bg-gray-50 rounded-xl p-4">
+        <p class="text-sm text-gray-600 mb-2">Translated to text:</p>
+        <p class="text-gray-900 font-medium">{{ conv[4] or conv['translated_text'] }}</p>
+      </div>
+    </div>
+
+    <!-- Doctor's Response -->
+    {% if conv[5] or conv['doctor_response_text'] %}
+    <div class="bg-white rounded-2xl shadow-lg p-6">
+      <h2 class="text-xl font-bold text-gray-900 mb-4">Doctor's Response</h2>
+      <div class="bg-blue-50 rounded-xl p-6">
+        <p class="text-gray-900 text-lg leading-relaxed">{{ conv[5] or conv['doctor_response_text'] }}</p>
+      </div>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-2xl shadow-lg p-12 text-center">
+      <i class="fas fa-hourglass-half text-gray-300 text-6xl mb-4"></i>
+      <h3 class="text-2xl font-bold text-gray-900 mb-2">Waiting for Doctor</h3>
+      <p class="text-gray-600">The doctor will respond soon. Check back later!</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

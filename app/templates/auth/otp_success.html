@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="min-h-screen bg-gray-50 flex flex-col justify-center py-16 sm:px-6 lg:px-8">
+
+  <!-- Logo + Title -->
+  <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">
+    <div class="flex justify-center mb-10">
+      <img src="{{ url_for('static', filename='img/icons/logo-hand.svg') }}"
+           alt="HandConnect" class="h-20 w-auto md:h-24">
+    </div>
+    <h2 class="text-5xl font-bold text-[#fe6449]">Dr. Labib</h2>
+  </div>
+
+  <!-- Success Card -->
+  <div class="mt-12 sm:mx-auto sm:w-full sm:max-w-md">
+    <div class="bg-white py-16 px-8 shadow-xl rounded-3xl text-center">
+
+      <!-- Big Checkmark Badge -->
+      <div class="inline-flex items-center justify-center w-40 h-40 rounded-full bg-gray-100 border-8 border-gray-200 mb-10">
+        <i class="fas fa-check text-[#073a3b] text-7xl"></i>
+      </div>
+
+      <!-- Success Title -->
+      <h3 class="text-4xl font-bold text-gray-900 mb-12">Verified!</h3>
+
+      <!-- Info Text -->
+      <p class="text-lg text-gray-600 mb-12">
+        Your email has been verified successfully. You can now proceed to your dashboard.
+      </p>
+
+      <!-- Continue Button -->
+      <a href="{{ url_for('dashboard.patient' if current_user.role == 'patient' else 'dashboard.doctor') }}"
+         class="inline-block w-full py-5 rounded-xl text-xl font-bold text-white bg-[#073a3b]
+                hover:bg-[#052d2e] focus:outline-none focus:ring-4 focus:ring-[#073a3b]/30
+                transition duration-200">
+        Go to Dashboard
+      </a>
+
+    </div>
+  </div>
+
+  <!-- Bottom Hands -->
+  <div class="mt-20 flex justify-center">
+    <img src="{{ url_for('static', filename='img/icons/bottom-decoration.svg') }}"
+         alt="" class="w-full max-w-2xl opacity-75">
+  </div>
+
+</div>
+{% endblock %}

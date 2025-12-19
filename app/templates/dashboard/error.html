@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+  <div class="max-w-md w-full text-center">
+    <div class="mb-8">
+      <i class="fas fa-exclamation-circle text-[#fe6449] text-8xl"></i>
+    </div>
+    <h1 class="text-4xl font-bold text-gray-900 mb-4">Something Went Wrong</h1>
+    <p class="text-lg text-gray-600 mb-8">
+      We encountered an error processing your request. Please try again.
+    </p>
+    <div class="space-y-4">
+      <a href="javascript:history.back()" 
+         class="block w-full py-4 bg-[#073a3b] text-white rounded-xl hover:bg-[#052d2e] transition font-semibold">
+        Go Back
+      </a>
+      {% if current_user.role == 'patient' %}
+        <a href="{{ url_for('dashboard.select_doctor') }}"
+           class="block w-full py-4 border-2 border-[#073a3b] text-[#073a3b] rounded-xl hover:bg-[#073a3b] hover:text-white transition font-semibold">
+          Select Doctor
+        </a>
+      {% elif current_user.role == 'doctor' %}
+        <a href="{{ url_for('dashboard.doctor') }}"
+           class="block w-full py-4 border-2 border-[#073a3b] text-[#073a3b] rounded-xl hover:bg-[#073a3b] hover:text-white transition font-semibold">
+          Doctor Dashboard
+        </a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}

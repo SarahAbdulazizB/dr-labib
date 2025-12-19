@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="min-h-screen bg-gray-50 pt-8 pb-32 relative z-10">
+
+  <!-- Back Button -->
+  <div class="max-w-md mx-auto px-6 mb-8">
+    <a href="{{ url_for('dashboard.select_doctor') if current_user.role == 'patient' else url_for('dashboard.doctor') }}" 
+       class="text-[#073a3b] text-2xl hover:underline">←</a>
+  </div>
+
+  <!-- Title -->
+  <div class="text-center mb-10">
+    <h2 class="text-3xl font-bold text-gray-900">Complete Your Profile</h2>
+    <p class="mt-3 text-lg text-gray-600">Personal information and profile picture</p>
+  </div>
+
+  <!-- Profile Picture Upload -->
+  <div class="max-w-md mx-auto px-6 mb-10">
+    <div class="bg-white rounded-2xl shadow-lg p-8 text-center">
+      <!-- Display current or placeholder image -->
+      <div class="mb-6">
+        <img id="profileImage" src="{% if current_user.profile_pic %}{{ current_user.profile_pic }}{% else %}{{ url_for('static', filename='img/icons/logo-hand.svg') }}{% endif %}" 
+             alt="Profile" class="w-24 h-24 rounded-full mx-auto object-cover border-4 {% if current_user.profile_pic %}border-[#073a3b]{% else %}border-gray-300{% endif %}">
+      </div>
+
+      <!-- File Input -->
+      <label for="profilePicInput" class="block">
+        <div class="border-2 border-dashed border-[#073a3b] rounded-xl p-4 cursor-pointer hover:bg-gray-50 transition">
+          <i class="fas fa-cloud-upload-alt text-[#073a3b] text-3xl mb-2"></i>
+          <p class="text-gray-700 font-medium">Click to upload profile picture</p>
+          <p class="text-sm text-gray-500">PNG, JPG, GIF (Max 5MB)</p>
+        </div>
+      </label>
+      <input type="file" id="profilePicInput" accept="image/*" class="hidden">
+      <p id="picFileName" class="mt-3 text-sm text-gray-600"></p>
+    </div>
+  </div>
+
+  <!-- Form -->
+  <form class="max-w-md mx-auto px-6 space-y-8" method="POST">
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="p-4 rounded-xl text-center font-medium 
+                {% if category == 'success' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+      {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <!-- Date of Birth -->
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-3">Date of Birth</label>
+      <div class="grid grid-cols-3 gap-3">
+        <!-- Day Dropdown -->
+        <div>
+          <select name="day" required
+            class="w-full px-4 py-3 border border-gray-300 rounded-xl text-center text-lg appearance-none bg-white
+                   focus:outline-none focus:ring-2 focus:ring-[#073a3b] focus:border-[#073a3b]">
+            <option value="">Day</option>
+            {% for day in range(1, 32) %}
+              <option value="{{ '%02d' % day }}" 
+                {% if user_data and user_data[0] and user_data[0].strftime('%d') == '%02d' % day %}selected{% endif %}>
+                {{ '%02d' % day }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Month Dropdown -->
+        <div>
+          <select name="month" required
+            class="w-full px-4 py-3 border border-gray-300 rounded-xl text-center text-lg appearance-none bg-white
+                   focus:outline-none focus:ring-2 focus:ring-[#073a3b] focus:border-[#073a3b]">
+            <option value="">Month</option>
+            <option value="01" {% if user_data and user_data[0] and user_data[0].strftime('%m') == '01' %}selected{% endif %}>January</option>
+            <option value="02" {% if user_data and user_data[0] and user_data[0].strftime('%m') == '02' %}selected{% endif %}>February</option>
+            <option value="03" {% if user_data and user_data[0] and user_data[0].strftime('%m') == '03' %}selected{% endif %}>March</option>
+            <option value="04" {% if user_data and user_data[0] and user_data[0].strftime('%m') == '04' %}selected{% endif %}>April</option>
+            <option value="05" {% if user_data and user_data[0] and user_data[0].strftime('%m') == '05' %}selected{% endif %}>May</option>
+            <option value="06" {% if user_data and user_data[0] and user_data[0].strftime('%m') == '06' %}selected{% endif %}>June</option>
+            <option value="07" {% if user_data and user_data[0] and user_data[0].strftime('%m') == '07' %}selected{% endif %}>July</option>
+            <option value="08" {% if user_data and user_data[0] and user_data[0].strftime('%m') == '08' %}selected{% endif %}>August</option>
+            <option value="09" {% if user_data and user_data[0] and user_data[0].strftime('%m') == '09' %}selected{% endif %}>September</option>
+            <option value="10" {% if user_data and user_data[0] and user_data[0].strftime('%m') == '10' %}selected{% endif %}>October</option>
+            <option value="11" {% if user_data and user_data[0] and user_data[0].strftime('%m') == '11' %}selected{% endif %}>November</option>
+            <option value="12" {% if user_data and user_data[0] and user_data[0].strftime('%m') == '12' %}selected{% endif %}>December</option>
+          </select>
+        </div>
+
+        <!-- Year Dropdown -->
+        <div>
+          <select name="year" required
+            class="w-full px-4 py-3 border border-gray-300 rounded-xl text-center text-lg appearance-none bg-white
+                   focus:outline-none focus:ring-2 focus:ring-[#073a3b] focus:border-[#073a3b]">
+            <option value="">Year</option>
+            {% for year in range(2024, 1950, -1) %}
+              <option value="{{ year }}"
+                {% if user_data and user_data[0] and user_data[0].strftime('%Y') == year|string %}selected{% endif %}>
+                {{ year }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gender Selection -->
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-3">Gender</label>
+      <div class="grid grid-cols-3 gap-3">
+        
+        <!-- Male Button -->
+        <label class="relative cursor-pointer">
+          <input type="radio" name="gender" value="male" required class="hidden peer"
+            {% if user_data and user_data[1] == 'male' %}checked{% endif %}>
+          <div class="py-4 border-2 border-gray-300 text-gray-600 rounded-xl text-center font-medium
+                      peer-checked:border-[#073a3b] peer-checked:bg-[#073a3b] peer-checked:text-white
+                      transition hover:border-[#073a3b]">
+            <i class="fas fa-mars text-xl mb-1"></i>
+            <p>Male</p>
+          </div>
+        </label>
+
+        <!-- Female Button -->
+        <label class="relative cursor-pointer">
+          <input type="radio" name="gender" value="female" required class="hidden peer"
+            {% if user_data and user_data[1] == 'female' %}checked{% endif %}>
+          <div class="py-4 border-2 border-gray-300 text-gray-600 rounded-xl text-center font-medium
+                      peer-checked:border-[#073a3b] peer-checked:bg-[#073a3b] peer-checked:text-white
+                      transition hover:border-[#073a3b]">
+            <i class="fas fa-venus text-xl mb-1"></i>
+            <p>Female</p>
+          </div>
+        </label>
+
+        <!-- Other Button -->
+        <label class="relative cursor-pointer">
+          <input type="radio" name="gender" value="other" required class="hidden peer"
+            {% if user_data and user_data[1] == 'other' %}checked{% endif %}>
+          <div class="py-4 border-2 border-gray-300 text-gray-600 rounded-xl text-center font-medium
+                      peer-checked:border-[#073a3b] peer-checked:bg-[#073a3b] peer-checked:text-white
+                      transition hover:border-[#073a3b]">
+            <i class="fas fa-genderless text-xl mb-1"></i>
+            <p>Other</p>
+          </div>
+        </label>
+
+      </div>
+    </div>
+
+    <!-- Save Button -->
+    <button type="submit"
+      class="w-full py-5 rounded-xl text-xl font-bold text-white bg-[#073a3b] hover:bg-[#052d2e] transition shadow-lg">
+      Save & Continue
+    </button>
+
+  </form>
+
+  <!-- Bottom Decoration -->
+  <div class="mt-16 flex justify-center">
+    <img src="{{ url_for('static', filename='img/icons/bottom-decoration.svg') }}" alt=""
+      class="w-full max-w-2xl opacity-75">
+  </div>
+
+</div>
+
+<script>
+  const profilePicInput = document.getElementById('profilePicInput');
+  const picFileName = document.getElementById('picFileName');
+  const profileImage = document.getElementById('profileImage');
+
+  profilePicInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file size
+    if (file.size > 5 * 1024 * 1024) {
+      picFileName.textContent = 'File too large (max 5MB)';
+      picFileName.style.color = 'red';
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      picFileName.textContent = 'Please select an image file';
+      picFileName.style.color = 'red';
+      return;
+    }
+
+    picFileName.textContent = `Selected: ${file.name}`;
+    picFileName.style.color = 'gray';
+
+    // Show preview immediately
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      profileImage.src = e.target.result;
+      profileImage.style.borderColor = '#073a3b';
+    };
+    reader.readAsDataURL(file);
+
+    // Upload immediately
+    const formData = new FormData();
+    formData.append('profile_pic', file);
+
+    try {
+      picFileName.textContent = 'Uploading...';
+      picFileName.style.color = 'blue';
+
+      const response = await fetch('/upload-profile-pic', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        picFileName.textContent = '✓ Profile picture uploaded!';
+        picFileName.style.color = 'green';
+        profileImage.src = data.profile_pic;
+      } else {
+        picFileName.textContent = `Error: ${data.error}`;
+        picFileName.style.color = 'red';
+      }
+    } catch (error) {
+      picFileName.textContent = `Upload failed: ${error.message}`;
+      picFileName.style.color = 'red';
+      console.error('Upload error:', error);
+    }
+  });
+</script>
+
+{% endblock %}

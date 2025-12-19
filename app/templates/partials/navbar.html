@@ -1,0 +1,130 @@
+<!-- Navbar Partial: app/templates/partials/navbar.html -->
+
+<nav class="bg-white shadow-lg sticky top-0 z-50">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between items-center h-16">
+      
+      <!-- Logo & Brand -->
+      <div class="flex items-center gap-3">
+        <img src="{{ url_for('static', filename='img/icons/logo-hand.svg') }}" alt="Dr. Labib" class="h-8 w-auto">
+        <span class="text-2xl font-bold text-[#fe6449]">Dr. Labib</span>
+      </div>
+
+      <!-- Desktop Navigation -->
+      <div class="hidden md:flex items-center gap-8">
+        
+        <!-- Home Link (Role-based) -->
+        {% if current_user.role == 'patient' %}
+          <a href="{{ url_for('dashboard.select_doctor') }}" 
+             class="text-gray-700 hover:text-[#073a3b] font-medium transition">
+            <i class="fas fa-home mr-2"></i>Select Doctor
+          </a>
+        {% elif current_user.role == 'doctor' %}
+          <a href="{{ url_for('dashboard.doctor') }}" 
+             class="text-gray-700 hover:text-[#073a3b] font-medium transition">
+            <i class="fas fa-home mr-2"></i>Home
+          </a>
+        {% endif %}
+
+        <!-- History (Patient only) -->
+        {% if current_user.role == 'patient' %}
+          <a href="{{ url_for('dashboard.history') }}" 
+             class="text-gray-700 hover:text-[#073a3b] font-medium transition">
+            <i class="fas fa-history mr-2"></i>History
+          </a>
+        {% endif %}
+
+        <!-- User Dropdown -->
+        <div class="relative group">
+          <button class="flex items-center gap-2 text-gray-700 hover:text-[#073a3b] font-medium">
+            {% if current_user.profile_pic %}
+              <img src="{{ current_user.profile_pic }}" alt="Profile" class="w-8 h-8 rounded-full object-cover border-2 border-[#073a3b]">
+            {% else %}
+              <i class="fas fa-user-circle text-2xl"></i>
+            {% endif %}
+            <span>{{ current_user.full_name }}</span>
+            <i class="fas fa-chevron-down text-xs"></i>
+          </button>
+          
+          <!-- Dropdown Menu -->
+          <div class="absolute right-0 mt-0 w-48 bg-white rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-200">
+            <a href="{{ url_for('auth.complete_profile') }}" 
+               class="block px-6 py-3 text-gray-700 hover:bg-gray-100 first:rounded-t-xl">
+              <i class="fas fa-user mr-2"></i>My Profile
+            </a>
+            <hr class="my-2">
+            <a href="{{ url_for('auth.logout') }}" 
+               class="block px-6 py-3 text-red-600 hover:bg-red-50 last:rounded-b-xl font-semibold">
+              <i class="fas fa-sign-out-alt mr-2"></i>Logout
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mobile Menu Button -->
+      <button id="mobileMenuBtn" class="md:hidden text-[#073a3b] text-2xl">
+        <i class="fas fa-bars"></i>
+      </button>
+
+    </div>
+  </div>
+
+  <!-- Mobile Navigation Menu -->
+  <div id="mobileMenu" class="hidden md:hidden bg-white border-t border-gray-200 shadow-lg">
+    <div class="px-4 py-4 space-y-3">
+      
+      <!-- Mobile Home -->
+      {% if current_user.role == 'patient' %}
+        <a href="{{ url_for('dashboard.select_doctor') }}" 
+           class="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition">
+          <i class="fas fa-home mr-2"></i>Select Doctor
+        </a>
+      {% elif current_user.role == 'doctor' %}
+        <a href="{{ url_for('dashboard.doctor') }}" 
+           class="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition">
+          <i class="fas fa-home mr-2"></i>Home
+        </a>
+      {% endif %}
+
+      <!-- Mobile History (Patient only) -->
+      {% if current_user.role == 'patient' %}
+        <a href="{{ url_for('dashboard.history') }}" 
+           class="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition">
+          <i class="fas fa-history mr-2"></i>History
+        </a>
+      {% endif %}
+
+      <!-- Mobile Profile -->
+      <a href="{{ url_for('auth.complete_profile') }}" 
+         class="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition">
+        <i class="fas fa-user mr-2"></i>My Profile
+      </a>
+
+      <hr class="my-3">
+
+      <!-- Mobile Logout -->
+      <a href="{{ url_for('auth.logout') }}" 
+         class="block px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition font-semibold">
+        <i class="fas fa-sign-out-alt mr-2"></i>Logout
+      </a>
+
+    </div>
+  </div>
+
+</nav>
+
+<script>
+  const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+  const mobileMenu = document.getElementById('mobileMenu');
+
+  mobileMenuBtn.addEventListener('click', () => {
+    mobileMenu.classList.toggle('hidden');
+  });
+
+  const mobileLinks = mobileMenu.querySelectorAll('a');
+  mobileLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      mobileMenu.classList.add('hidden');
+    });
+  });
+</script>
