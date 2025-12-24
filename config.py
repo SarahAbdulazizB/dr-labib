@@ -10,6 +10,6 @@ class Config:
     MAIL_SERVER = 'smtp.gmail.com'
     MAIL_PORT = 587
     MAIL_USE_TLS = True
-    MAIL_USERNAME = 'example@gmail.com'  # ← CHANGE THIS
-    MAIL_PASSWORD = 'your_key_here'    # ← App Password (NOT regular password!)
-    MAIL_DEFAULT_SENDER = 'example@gmail.com'
+    MAIL_USERNAME = 'dr.labib2025@gmail.com'  # ← CHANGE THIS
+    MAIL_PASSWORD = 'bruc tixi rhrm lvru'    # ← App Password (NOT regular password!)
+    MAIL_DEFAULT_SENDER = 'dr.labib2025@gmail.com'

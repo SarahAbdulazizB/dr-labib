@@ -1,7 +1,0 @@
-Flask==2.3.5
-Flask-Login==0.6.3
-Flask-Mail==0.9.1
-Flask-WTF==1.1.1
-WTForms==3.0.1
-Werkzeug==2.3.8
-mysql-connector-python==8.1.1

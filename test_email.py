@@ -11,10 +11,10 @@ with app.app_context():
     try:
         msg = Message(
             subject='Test Email - Dr-labib',
-            recipients=['example@gmail.com']  # ← Send to yourself
+            recipients=['umarhasnat3456@gmail.com']  # ← Send to yourself
         )
         msg.body = "If you receive this, email setup is working! 🎉"
         mail.send(msg)
-        print("Email sent successfully!")
+        print("✅ Email sent successfully!")
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"❌ Error: {e}")

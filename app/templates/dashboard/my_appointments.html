@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="min-h-screen bg-gray-50 py-8 px-4">
+  <div class="max-w-6xl mx-auto">
+    
+    <!-- Header -->
+    <div class="mb-8 flex justify-between items-center">
+      <div>
+        <a href="{% if current_user.role == 'patient' %}{{ url_for('dashboard.select_doctor') }}{% else %}{{ url_for('dashboard.doctor') }}{% endif %}" 
+           class="text-[#073a3b] hover:underline mb-4 inline-block">
+          ← Back
+        </a>
+        <h1 class="text-4xl font-bold text-[#073a3b]">My Appointments</h1>
+      </div>
+      
+      <!-- Book Appointment Button (Patient only) -->
+      {% if current_user.role == 'patient' %}
+      <a href="{{ url_for('dashboard.select_doctor') }}"
+        class="px-6 py-3 bg-[#073a3b] text-white rounded-xl hover:bg-[#052d2e] transition font-semibold">
+        + Book New Appointment
+      </a>
+      {% endif %}
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="p-4 rounded-xl text-center font-medium mb-6
+                    {% if category == 'success' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <!-- Appointments Table -->
+    <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+      
+      {% if appointments %}
+        <table class="w-full">
+          <thead class="bg-gray-100 border-b-2 border-gray-300">
+            <tr>
+              <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">
+                {% if current_user.role == 'patient' %}Doctor{% else %}Patient{% endif %}
+              </th>
+              <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Date</th>
+              <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Time</th>
+              <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Reason</th>
+              <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Status</th>
+              <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for appt in appointments %}
+            <tr class="border-b border-gray-200 hover:bg-gray-50 transition">
+              <!-- Doctor/Patient Name -->
+              <td class="px-6 py-4">
+                <p class="font-semibold text-gray-900">
+                  {% if current_user.role == 'patient' %}
+                    {{ appt.doctor_name }}
+                  {% else %}
+                    {{ appt.patient_name }}
+                  {% endif %}
+                </p>
+              </td>
+              
+              <!-- Date -->
+              <td class="px-6 py-4 text-gray-700">
+                {{ appt.appointment_date.strftime('%b %d, %Y') }}
+              </td>
+              
+              <!-- Time -->
+              <td class="px-6 py-4 text-gray-700">
+                {% set hours = appt.appointment_time.seconds // 3600 %}
+                {% set minutes = (appt.appointment_time.seconds % 3600) // 60 %}
+                {{ '%02d:%02d' | format(hours, minutes) }}
+              </td>
+              
+              <!-- Reason -->
+              <td class="px-6 py-4 text-gray-700">
+                {% if appt.reason %}
+                  <span class="text-sm">{{ appt.reason }}</span>
+                {% else %}
+                  <span class="text-sm text-gray-500 italic">No reason provided</span>
+                {% endif %}
+              </td>
+              
+              <!-- Status Badge -->
+              <td class="px-6 py-4">
+                <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold
+                  {% if appt.status == 'scheduled' %}bg-blue-100 text-blue-800
+                  {% elif appt.status == 'completed' %}bg-green-100 text-green-800
+                  {% elif appt.status == 'cancelled' %}bg-red-100 text-red-800{% endif %}">
+                  {{ appt.status|title }}
+                </span>
+              </td>
+              
+              <!-- Action Button -->
+              <td class="px-6 py-4 text-center">
+                {% if appt.status == 'scheduled' %}
+                  <button onclick="cancelAppointment({{ appt.id }})"
+                    class="text-red-600 hover:text-red-800 font-semibold text-sm transition">
+                    Cancel
+                  </button>
+                {% else %}
+                  <span class="text-gray-400 text-sm">—</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <!-- Empty State -->
+        <div class="p-12 text-center">
+          <i class="fas fa-calendar-times text-gray-300 text-6xl mb-4 block"></i>
+          <h3 class="text-2xl font-bold text-gray-900 mb-2">No Appointments</h3>
+          <p class="text-gray-600 mb-6">
+            {% if current_user.role == 'patient' %}
+              You haven't booked any appointments yet. 
+              <a href="{{ url_for('dashboard.select_doctor') }}" class="text-[#073a3b] font-semibold hover:underline">
+                Book your first appointment
+              </a>
+            {% else %}
+              You have no scheduled appointments.
+            {% endif %}
+          </p>
+        </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+<!-- Cancel Confirmation Modal -->
+<div id="cancelModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">Cancel Appointment?</h2>
+    <p class="text-gray-600 mb-6">
+      Are you sure you want to cancel this appointment?
+    </p>
+    <div class="flex gap-4">
+      <button onclick="confirmCancel()" 
+        class="flex-1 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition font-semibold">
+        Cancel Appointment
+      </button>
+      <button onclick="closeModal()" 
+        class="flex-1 py-3 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition font-semibold">
+        Keep It
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- JavaScript for Cancel Functionality -->
+<script>
+let appointmentToCancel = null;
+
+function cancelAppointment(apptId) {
+  appointmentToCancel = apptId;
+  document.getElementById('cancelModal').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('cancelModal').classList.add('hidden');
+  appointmentToCancel = null;
+}
+
+function confirmCancel() {
+  if (!appointmentToCancel) return;
+  
+  fetch(`/dashboard/cancel-appointment/${appointmentToCancel}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      alert('Appointment cancelled successfully');
+      location.reload();
+    } else {
+      alert('Error: ' + (data.error || 'Failed to cancel appointment'));
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Failed to cancel appointment');
+  })
+  .finally(() => {
+    closeModal();
+  });
+}
+
+// Close modal when clicking outside
+document.getElementById('cancelModal').addEventListener('click', function(e) {
+  if (e.target === this) {
+    closeModal();
+  }
+});
+</script>
+
+{% endblock %}

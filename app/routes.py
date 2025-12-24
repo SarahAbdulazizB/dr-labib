@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, flash, redirect, url_for, session
+from flask import Blueprint, render_template, request, flash, redirect, url_for, session, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 from app.forms import SignupForm, LoginForm
 from app.middleware import patient_only, doctor_only
@@ -146,8 +146,6 @@ def otp_success():
     return render_template('auth/otp_success.html')
 
 
-# Add this BEFORE the complete_profile function
-
 @auth.route('/upload-profile-pic', methods=['POST'])
 @login_required
 def upload_profile_pic():
@@ -212,9 +210,6 @@ def upload_profile_pic():
     except Exception as e:
         print(f"Upload error: {e}")
         return {"success": False, "error": str(e)}, 500
-    
-
-    
 
 @auth.route('/profile', methods=['GET', 'POST'])
 @login_required
@@ -222,7 +217,8 @@ def complete_profile():
     conn = get_db_connection()
     if conn is None:
         flash('Database error', 'danger')
-        return redirect(url_for('dashboard.patient' if current_user.role == 'patient' else 'dashboard.doctor'))
+        # FIXED: Changed from dashboard.patient to select_doctor for patients
+        return redirect(url_for('dashboard.select_doctor' if current_user.role == 'patient' else 'dashboard.doctor'))
 
     try:
         cursor = conn.cursor()
@@ -253,10 +249,11 @@ def complete_profile():
             cursor.close()
             conn.close()
             
+            # FIXED: Changed from dashboard.patient to select_doctor for patients
             if current_user.role == 'doctor':
                 return redirect(url_for('dashboard.doctor'))
             else:
-                return redirect(url_for('dashboard.patient'))
+                return redirect(url_for('dashboard.select_doctor'))
 
         cursor.execute("SELECT dob, gender FROM users WHERE id = %s", (current_user.id,))
         user_data = cursor.fetchone()
@@ -268,7 +265,9 @@ def complete_profile():
     except Exception as e:
         print(f"Profile error: {e}")
         flash('An error occurred', 'danger')
-        return redirect(url_for('dashboard.patient' if current_user.role == 'patient' else 'dashboard.doctor'))
+        # FIXED: Changed from dashboard.patient to select_doctor for patients
+        return redirect(url_for('dashboard.select_doctor' if current_user.role == 'patient' else 'dashboard.doctor'))
+
 
 # NEW: Select Doctor Page (after patient signup/login)
 @dashboard.route('/select-doctor')
@@ -297,14 +296,40 @@ def select_doctor():
 @login_required
 @patient_only
 def patient(doctor_id):
-    # Store selected doctor in session
-    session['selected_doctor_id'] = doctor_id
-    return render_template('dashboard/patient_dashboard.html')
+    # Validate that doctor exists and has role='doctor'
+    conn = get_db_connection()
+    if not conn:
+        flash('Database error', 'danger')
+        return redirect(url_for('dashboard.select_doctor'))
+    
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT id, role FROM users WHERE id = %s", (doctor_id,))
+        doctor = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        
+        if not doctor or doctor['role'] != 'doctor':
+            flash('Invalid doctor selected', 'danger')
+            return redirect(url_for('dashboard.select_doctor'))
+        
+        # Store selected doctor in session
+        session['selected_doctor_id'] = doctor_id
+        return render_template('dashboard/patient_dashboard.html')
+    except Exception as e:
+        print(f"Error validating doctor: {e}")
+        flash('Could not load doctor', 'danger')
+        return redirect(url_for('dashboard.select_doctor'))
 
 @dashboard.route('/upload_video', methods=['POST'])
 @login_required
 @patient_only
 def upload_video():
+    # VALIDATION: Check if doctor was selected
+    doctor_id = session.get('selected_doctor_id')
+    if not doctor_id:
+        return {"success": False, "error": "Please select a doctor first"}, 400
+    
     if 'video' not in request.files:
         return {"success": False, "error": "No video uploaded"}, 400
     
@@ -338,29 +363,32 @@ def upload_video():
         try:
             cursor = conn.cursor()
             
-            # Get selected doctor from session or random
-            doctor_id = session.get('selected_doctor_id')
-            if not doctor_id:
-                cursor.execute("SELECT id FROM users WHERE role = 'doctor' ORDER BY RAND() LIMIT 1")
-                doctor = cursor.fetchone()
-                doctor_id = doctor[0] if doctor else None
+            # VALIDATION: Verify selected doctor exists and is a doctor
+            cursor.execute("SELECT id, role FROM users WHERE id = %s", (doctor_id,))
+            doctor = cursor.fetchone()
             
-            if not doctor_id:
-                cursor.execute("""
-                    INSERT INTO users (full_name, email, phone, password, role)
-                    VALUES ('Dr. Default', 'doctor@test.com', '0500000000', 'temp', 'doctor')
-                """)
-                conn.commit()
-                doctor_id = cursor.lastrowid
+            if not doctor or doctor[1] != 'doctor':
+                return {"success": False, "error": "Invalid doctor selected"}, 400
             
+            # Create conversation record (metadata only)
             cursor.execute("""
                 INSERT INTO conversations 
-                (patient_id, doctor_id, patient_video_path, translated_text, status)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (current_user.id, doctor_id, f"/static/uploads/signs_videos/{filename}", translated_text, 'pending'))
-            
+                (patient_id, doctor_id, status, timestamp, updated_at)
+                VALUES (%s, %s, 'pending', NOW(), NOW())
+            """, (current_user.id, doctor_id))
             conn.commit()
             conversation_id = cursor.lastrowid
+            
+            # Create the initial message in messages table
+            cursor.execute("""
+                INSERT INTO messages 
+                (conversation_id, sender_id, sender_role, message_type, video_path, translated_text, timestamp)
+                VALUES (%s, %s, 'patient', 'video', %s, %s, NOW())
+            """, (conversation_id, current_user.id, f"/static/uploads/signs_videos/{filename}", translated_text))
+            
+            conn.commit()
+            cursor.close()
+            conn.close()
             
             return {
                 "success": True, 
@@ -385,16 +413,9 @@ otp_storage = {}
 @auth.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
-        # DEBUG: Print incoming data
-        print(f"\n=== FORGOT PASSWORD DEBUG ===")
-        print(f"POST data keys: {request.form.keys()}")
-        print(f"Session otp_sent (start): {session.get('otp_sent')}")
-        print(f"Session otp_email (start): {session.get('otp_email')}")
-        
         # STEP 1: Email submission (first time)
         if 'email' in request.form and not session.get('otp_sent'):
             email = request.form.get('email', '').strip().lower()
-            print(f"DEBUG: New email submitted: {email}")
             
             if not email:
                 flash('Please enter your email', 'danger')
@@ -417,7 +438,6 @@ def forgot_password():
                     return render_template('auth/forgot_password.html')
                 
                 otp = ''.join(random.choices(string.digits, k=6))
-                print(f"DEBUG: OTP generated: {otp} for {email}")
                 
                 otp_storage[email] = {
                     'otp': otp,
@@ -442,11 +462,9 @@ Best regards,
 Dr. Labib Team
 """
                     mail.send(msg)
-                    print(f"DEBUG: Email sent successfully to {email}")
                     
                     session['otp_email'] = email
                     session['otp_sent'] = True
-                    print(f"DEBUG: Session updated - otp_email: {session.get('otp_email')}, otp_sent: {session.get('otp_sent')}")
                     flash('Verification code sent to your email!', 'success')
                     
                 except Exception as e:
@@ -461,18 +479,15 @@ Dr. Labib Team
         
         # STEP 2: OTP verification (after email sent)
         elif session.get('otp_sent'):
-            print(f"DEBUG: OTP verification attempt")
             otp_input = ''.join([
                 request.form.get(f'otp_{i}', '') for i in range(6)
             ]).strip()
-            print(f"DEBUG: OTP input received: {otp_input}")
             
             if not otp_input or len(otp_input) != 6:
                 flash('Please enter the complete 6-digit code', 'danger')
                 return render_template('auth/forgot_password.html')
             
             email = session.get('otp_email')
-            print(f"DEBUG: Checking OTP for email: {email}")
             stored_data = otp_storage.get(email)
             
             if not stored_data:
@@ -483,10 +498,8 @@ Dr. Labib Team
             
             if stored_data['otp'] == otp_input:
                 if datetime.now() < stored_data['expires']:
-                    print(f"DEBUG: OTP verified successfully")
                     session['otp_verified'] = True
                     session['reset_user_id'] = stored_data['user_id']
-                    # Clear OTP data after verification
                     otp_storage.pop(email, None)
                     session.pop('otp_sent', None)
                     session.pop('otp_email', None)
@@ -497,10 +510,7 @@ Dr. Labib Team
                     session.pop('otp_sent', None)
                     session.pop('otp_email', None)
             else:
-                print(f"DEBUG: OTP mismatch - Expected: {stored_data['otp']}, Got: {otp_input}")
                 flash('Invalid code. Please try again.', 'danger')
-        else:
-            print(f"DEBUG: No email or otp_sent in form")
     
     return render_template('auth/forgot_password.html')
 
@@ -545,7 +555,6 @@ def reset_password():
             cursor.close()
             conn.close()
             
-            # Clear all session data
             session.pop('otp_verified', None)
             session.pop('reset_user_id', None)
             
@@ -569,6 +578,7 @@ def patient_dashboard():
 @login_required
 @patient_only
 def history():
+    """Show all conversations (hard delete removes them completely)"""
     conn = get_db_connection()
     if not conn:
         flash('Database error', 'danger')
@@ -576,10 +586,11 @@ def history():
     
     try:
         cursor = conn.cursor(dictionary=True)
+        # REMOVED: AND is_deleted_by_patient = 0
         cursor.execute("""
             SELECT * FROM conversations 
-            WHERE patient_id = %s 
-            ORDER BY timestamp DESC
+            WHERE patient_id = %s
+            ORDER BY updated_at DESC
         """, (current_user.id,))
         conversations = cursor.fetchall()
         cursor.close()
@@ -594,6 +605,7 @@ def history():
 @dashboard.route('/conversation/<int:conv_id>', methods=['GET', 'POST'])
 @login_required
 def conversation(conv_id):
+    """Show conversation (hard delete removes it completely)"""
     conn = get_db_connection()
     if not conn:
         flash('Database error', 'danger')
@@ -602,6 +614,7 @@ def conversation(conv_id):
     try:
         cursor = conn.cursor(dictionary=True)
         
+        # REMOVED: AND is_deleted_by_patient = 0 / AND is_deleted_by_doctor = 0
         if current_user.role == 'patient':
             cursor.execute("""
                 SELECT c.* FROM conversations c
@@ -624,6 +637,17 @@ def conversation(conv_id):
             flash('Conversation not found', 'danger')
             return redirect(url_for('dashboard.history' if current_user.role == 'patient' else 'dashboard.doctor'))
         
+        # Fetch all messages in this conversation (threaded)
+        cursor.execute("""
+            SELECT m.*, u.full_name, u.profile_pic
+            FROM messages m
+            JOIN users u ON m.sender_id = u.id
+            WHERE m.conversation_id = %s
+            ORDER BY m.timestamp ASC
+        """, (conv_id,))
+        messages = cursor.fetchall()
+        
+        # Handle POST - sending a new message
         if request.method == 'POST':
             message_text = request.form.get('message_text', '').strip()
             
@@ -631,21 +655,29 @@ def conversation(conv_id):
                 flash('Please enter a message', 'danger')
                 cursor.close()
                 conn.close()
-                return render_template('dashboard/conversation.html', conv=conversation)
+                return render_template('dashboard/conversation.html', conv=conversation, messages=messages)
             
             try:
+                # Insert new message into messages table
+                cursor.execute("""
+                    INSERT INTO messages 
+                    (conversation_id, sender_id, sender_role, message_type, message_text, timestamp)
+                    VALUES (%s, %s, %s, %s, %s, NOW())
+                """, (conv_id, current_user.id, current_user.role, 'text', message_text))
+                
+                # Update conversation status and timestamp
                 if current_user.role == 'doctor':
                     cursor.execute("""
                         UPDATE conversations 
-                        SET doctor_response_text = %s, status = 'responded'
+                        SET status = 'responded', updated_at = NOW()
                         WHERE id = %s
-                    """, (message_text, conv_id))
+                    """, (conv_id,))
                 elif current_user.role == 'patient':
                     cursor.execute("""
                         UPDATE conversations 
-                        SET patient_response_text = %s
+                        SET updated_at = NOW()
                         WHERE id = %s
-                    """, (message_text, conv_id))
+                    """, (conv_id,))
                 
                 conn.commit()
                 flash('Message sent successfully!', 'success')
@@ -654,25 +686,128 @@ def conversation(conv_id):
                 return redirect(url_for('dashboard.conversation', conv_id=conv_id))
                 
             except Exception as e:
+                conn.rollback()
                 print(f"Message error: {e}")
                 flash('Failed to send message', 'danger')
                 cursor.close()
                 conn.close()
-                return render_template('dashboard/conversation.html', conv=conversation)
+                return render_template('dashboard/conversation.html', conv=conversation, messages=messages)
         
         cursor.close()
         conn.close()
-        return render_template('dashboard/conversation.html', conv=conversation)
+        return render_template('dashboard/conversation.html', conv=conversation, messages=messages)
         
     except Exception as e:
         print(f"Error loading conversation: {e}")
         flash('Could not load conversation', 'danger')
         return redirect(url_for('dashboard.history' if current_user.role == 'patient' else 'dashboard.doctor'))
 
+# ============================================
+# DELETE CONVERSATION ROUTE (Soft Delete)
+# ============================================
+@dashboard.route('/delete-conversation/<int:conv_id>', methods=['POST'])
+@login_required
+def delete_conversation(conv_id):
+    """Hard delete conversation - permanently removes from database"""
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"success": False, "error": "Database error"}), 500
+    
+    try:
+        cursor = conn.cursor(dictionary=True)
+        
+        # Verify user owns this conversation
+        if current_user.role == 'patient':
+            cursor.execute("""
+                SELECT id FROM conversations 
+                WHERE id = %s AND patient_id = %s
+            """, (conv_id, current_user.id))
+        elif current_user.role == 'doctor':
+            cursor.execute("""
+                SELECT id FROM conversations 
+                WHERE id = %s AND doctor_id = %s
+            """, (conv_id, current_user.id))
+        else:
+            return jsonify({"success": False, "error": "Invalid role"}), 400
+        
+        conversation = cursor.fetchone()
+        if not conversation:
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "error": "Conversation not found"}), 404
+        
+        # HARD DELETE - Completely remove from database
+        # CASCADE delete will also remove all related messages
+        cursor.execute("""
+            DELETE FROM conversations 
+            WHERE id = %s
+        """, (conv_id,))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        return jsonify({"success": True, "message": "Conversation deleted permanently"})
+        
+    except Exception as e:
+        print(f"Delete conversation error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ============================================
+# DELETE MESSAGE ROUTE (Soft Delete)
+# ============================================
+@dashboard.route('/delete-message/<int:msg_id>', methods=['POST'])
+@login_required
+def delete_message(msg_id):
+    """User can delete only their own messages"""
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"success": False, "error": "Database error"}), 500
+    
+    try:
+        cursor = conn.cursor(dictionary=True)
+        
+        # Verify message belongs to current user
+        cursor.execute("""
+            SELECT sender_id, conversation_id FROM messages 
+            WHERE id = %s
+        """, (msg_id,))
+        message = cursor.fetchone()
+        
+        if not message:
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "error": "Message not found"}), 404
+        
+        # Only sender can delete their own message
+        if message['sender_id'] != current_user.id:
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "error": "Cannot delete other user's message"}), 403
+        
+        # Mark message as deleted (Soft Delete)
+        cursor.execute("""
+            UPDATE messages 
+            SET is_deleted = TRUE, deleted_at = NOW()
+            WHERE id = %s
+        """, (msg_id,))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        return jsonify({"success": True, "message": "Message deleted"})
+        
+    except Exception as e:
+        print(f"Delete message error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @dashboard.route('/doctor')
 @login_required
 @doctor_only
 def doctor():
+    """Show doctor's conversations (hard delete removes them completely)"""
     conn = get_db_connection()
     if not conn:
         return render_template('dashboard/error.html')
@@ -680,6 +815,7 @@ def doctor():
     try:
         cursor = conn.cursor(dictionary=True)
         
+        # REMOVED: AND is_deleted_by_doctor = 0
         cursor.execute("""
             SELECT c.*, u.full_name as patient_name, u.email as patient_email
             FROM conversations c
@@ -689,6 +825,7 @@ def doctor():
         """, (current_user.id,))
         conversations = cursor.fetchall()
         
+        # REMOVED: AND is_deleted_by_doctor = 0 from COUNT conditions
         cursor.execute("""
             SELECT 
                 COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
@@ -708,3 +845,207 @@ def doctor():
     except Exception as e:
         print(f"Doctor dashboard error: {e}")
         return render_template('dashboard/error.html')
+    
+
+# Add these 3 routes to your app/routes.py file
+
+# ============================================
+# ROUTE 1: BOOK APPOINTMENT PAGE (GET)
+# ============================================
+@dashboard.route('/book-appointment/<int:doctor_id>', methods=['GET', 'POST'])
+@login_required
+@patient_only
+def book_appointment(doctor_id):
+    """Patient books appointment with doctor"""
+    
+    # Verify doctor exists
+    conn = get_db_connection()
+    if not conn:
+        flash('Database error', 'danger')
+        return redirect(url_for('dashboard.select_doctor'))
+    
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT id, full_name FROM users WHERE id = %s AND role = 'doctor'", (doctor_id,))
+        doctor = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        
+        if not doctor:
+            flash('Doctor not found', 'danger')
+            return redirect(url_for('dashboard.select_doctor'))
+    except Exception as e:
+        print(f"Error fetching doctor: {e}")
+        flash('Error loading doctor', 'danger')
+        return redirect(url_for('dashboard.select_doctor'))
+    
+    # Handle POST request (form submission)
+    if request.method == 'POST':
+        appointment_date = request.form.get('appointment_date', '').strip()
+        appointment_time = request.form.get('appointment_time', '').strip()
+        reason = request.form.get('reason', '').strip()
+        
+        # VALIDATION 1: Check if fields are empty
+        if not appointment_date or not appointment_time:
+            flash('Please fill in all required fields', 'danger')
+            return render_template('dashboard/book_appointment.html', doctor=doctor)
+        
+        conn = get_db_connection()
+        if not conn:
+            flash('Database error', 'danger')
+            return render_template('dashboard/book_appointment.html', doctor=doctor)
+        
+        try:
+            # VALIDATION 2: Check if date is in the past
+            from datetime import datetime, date
+            selected_date = datetime.strptime(appointment_date, '%Y-%m-%d').date()
+            
+            if selected_date < date.today():
+                flash('Cannot book appointments in the past', 'danger')
+                return render_template('dashboard/book_appointment.html', doctor=doctor)
+            
+            # VALIDATION 3: Check time is within working hours (9 AM - 5 PM)
+            selected_time = datetime.strptime(appointment_time, '%H:%M').time()
+            
+            if selected_time.hour < 9 or selected_time.hour >= 17:
+                flash('Appointments must be between 9:00 AM and 5:00 PM', 'danger')
+                return render_template('dashboard/book_appointment.html', doctor=doctor)
+            
+            # VALIDATION 4: Check for double booking (doctor not available at this time)
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("""
+                SELECT id FROM appointments 
+                WHERE doctor_id = %s 
+                AND appointment_date = %s 
+                AND appointment_time = %s 
+                AND status = 'scheduled'
+            """, (doctor_id, appointment_date, appointment_time))
+            
+            if cursor.fetchone():
+                flash('Doctor is not available at this time. Please choose another time.', 'danger')
+                cursor.close()
+                conn.close()
+                return render_template('dashboard/book_appointment.html', doctor=doctor)
+            
+            # All validations passed - insert appointment
+            cursor.execute("""
+                INSERT INTO appointments 
+                (patient_id, doctor_id, appointment_date, appointment_time, reason, status)
+                VALUES (%s, %s, %s, %s, %s, 'scheduled')
+            """, (current_user.id, doctor_id, appointment_date, appointment_time, reason))
+            
+            conn.commit()
+            cursor.close()
+            conn.close()
+            
+            flash('Appointment booked successfully!', 'success')
+            return redirect(url_for('dashboard.my_appointments'))
+            
+        except Exception as e:
+            print(f"Booking error: {e}")
+            flash('Failed to book appointment', 'danger')
+            return render_template('dashboard/book_appointment.html', doctor=doctor)
+    
+    return render_template('dashboard/book_appointment.html', doctor=doctor)
+
+
+# ============================================
+# ROUTE 2: VIEW MY APPOINTMENTS
+# ============================================
+@dashboard.route('/my-appointments')
+@login_required
+def my_appointments():
+    """Patient/Doctor view their appointments"""
+    conn = get_db_connection()
+    if not conn:
+        flash('Database error', 'danger')
+        return render_template('dashboard/error.html')
+    
+    try:
+        cursor = conn.cursor(dictionary=True)
+        
+        if current_user.role == 'patient':
+            # Patient sees appointments with doctors
+            cursor.execute("""
+                SELECT a.*, u.full_name as doctor_name
+                FROM appointments a
+                JOIN users u ON a.doctor_id = u.id
+                WHERE a.patient_id = %s
+                ORDER BY a.appointment_date DESC, a.appointment_time DESC
+            """, (current_user.id,))
+        elif current_user.role == 'doctor':
+            # Doctor sees appointments with patients
+            cursor.execute("""
+                SELECT a.*, u.full_name as patient_name
+                FROM appointments a
+                JOIN users u ON a.patient_id = u.id
+                WHERE a.doctor_id = %s
+                ORDER BY a.appointment_date DESC, a.appointment_time DESC
+            """, (current_user.id,))
+        
+        appointments = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        return render_template('dashboard/my_appointments.html', appointments=appointments)
+    
+    except Exception as e:
+        print(f"Error fetching appointments: {e}")
+        flash('Could not load appointments', 'danger')
+        return render_template('dashboard/error.html')
+
+
+# ============================================
+# ROUTE 3: CANCEL APPOINTMENT
+# ============================================
+@dashboard.route('/cancel-appointment/<int:appt_id>', methods=['POST'])
+@login_required
+def cancel_appointment(appt_id):
+    """Cancel an appointment"""
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"success": False, "error": "Database error"}), 500
+    
+    try:
+        cursor = conn.cursor(dictionary=True)
+        
+        # Verify user owns this appointment
+        cursor.execute("""
+            SELECT id, patient_id, doctor_id FROM appointments 
+            WHERE id = %s
+        """, (appt_id,))
+        
+        appointment = cursor.fetchone()
+        
+        if not appointment:
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "error": "Appointment not found"}), 404
+        
+        # Check if current user is patient or doctor in this appointment
+        if current_user.role == 'patient' and appointment['patient_id'] != current_user.id:
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "error": "Unauthorized"}), 403
+        
+        if current_user.role == 'doctor' and appointment['doctor_id'] != current_user.id:
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "error": "Unauthorized"}), 403
+        
+        # Cancel appointment (change status to cancelled)
+        cursor.execute("""
+            UPDATE appointments 
+            SET status = 'cancelled'
+            WHERE id = %s
+        """, (appt_id,))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        return jsonify({"success": True, "message": "Appointment cancelled"})
+        
+    except Exception as e:
+        print(f"Cancel appointment error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500

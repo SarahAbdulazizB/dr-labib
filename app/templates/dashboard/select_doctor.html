@@ -30,11 +30,20 @@
             <span class="text-sm">{{ doctor.email }}</span>
           </div>
 
-          <!-- Select Button -->
-          <a href="{{ url_for('dashboard.patient', doctor_id=doctor.id) }}"
-             class="block w-full py-3 bg-[#073a3b] text-white rounded-xl hover:bg-[#052d2e] transition font-semibold text-center">
-            <i class="fas fa-arrow-right mr-2"></i>Select Doctor
-          </a>
+          <!-- Action Buttons -->
+          <div class="space-y-3 pt-2">
+            <!-- Send Video Message Button -->
+            <a href="{{ url_for('dashboard.patient', doctor_id=doctor.id) }}"
+               class="block w-full py-3 bg-[#073a3b] text-white rounded-xl hover:bg-[#052d2e] transition font-semibold text-center">
+              <i class="fas fa-video mr-2"></i>Send Message
+            </a>
+
+            <!-- ADDED: Book Appointment Button -->
+            <a href="{{ url_for('dashboard.book_appointment', doctor_id=doctor.id) }}"
+               class="block w-full py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition font-semibold text-center">
+              <i class="fas fa-calendar-check mr-2"></i>Book Appointment
+            </a>
+          </div>
         </div>
       </div>
       {% endfor %}
