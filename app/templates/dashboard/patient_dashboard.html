@@ -10,30 +10,25 @@
     <h1 class="text-5xl font-bold text-[#073a3b] mb-4">
       Record Your Message
     </h1>
-    <p class="text-2xl text-gray-600">Upload a video of your sign language message</p>
+    <p class="text-2xl text-gray-600">Upload your sign language keypoints</p>
   </div>
 
-  <!-- Video Upload Card -->
+  <!-- Upload Card -->
   <div class="max-w-4xl mx-auto bg-white rounded-3xl shadow-2xl p-10">
     
-    <!-- Video Preview -->
-    <div id="preview-container" class="mb-8 hidden">
-      <video id="preview" class="w-full rounded-2xl bg-black" controls></video>
-    </div>
-
     <!-- Upload Form -->
     <form id="uploadForm" class="space-y-8">
       <!-- File Input -->
       <div>
         <label class="block text-lg font-semibold text-gray-700 mb-4">
-          Select Video File (Max 10MB)
+          Select Keypoint File (Max 1MB)
         </label>
         <div class="border-2 border-dashed border-[#073a3b] rounded-2xl p-8 text-center cursor-pointer hover:bg-gray-50 transition"
              id="dropZone">
-          <i class="fas fa-video text-[#073a3b] text-5xl mb-4"></i>
+          <i class="fas fa-database text-[#073a3b] text-5xl mb-4"></i>
           <p class="text-lg font-medium text-gray-900">Click to select or drag file here</p>
-          <p class="text-sm text-gray-500 mt-2">Supported: MP4, WebM (Max 10MB)</p>
-          <input type="file" id="videoInput" name="video" accept="video/*" class="hidden">
+          <p class="text-sm text-gray-500 mt-2">Supported: .npy keypoint files (Max 1MB)</p>
+          <input type="file" id="videoInput" name="video" accept=".npy" class="hidden">
         </div>
         <div id="fileName" class="mt-4 text-center font-medium text-gray-600"></div>
       </div>
@@ -57,8 +52,6 @@
   const uploadBtn = document.getElementById('uploadBtn');
   const status = document.getElementById('status');
   const fileName = document.getElementById('fileName');
-  const previewContainer = document.getElementById('preview-container');
-  const preview = document.getElementById('preview');
 
   dropZone.addEventListener('click', () => videoInput.click());
   videoInput.addEventListener('change', (e) => handleFileSelect(e.target.files[0]));
@@ -81,25 +74,19 @@
   function handleFileSelect(file) {
     if (!file) return;
 
-    if (file.size > 10 * 1024 * 1024) {
-      status.innerHTML = '<span class="text-red-600">File too large! Max 10MB</span>';
+    if (file.size > 1 * 1024 * 1024) {
+      status.innerHTML = '<span class="text-red-600">File too large! Max 1MB</span>';
       return;
     }
 
-    if (!file.type.startsWith('video/')) {
-      status.innerHTML = '<span class="text-red-600">Please select a video file</span>';
+    if (!file.name.endsWith('.npy')) {
+      status.innerHTML = '<span class="text-red-600">Please select a .npy keypoint file</span>';
       return;
     }
 
     fileName.textContent = `Selected: ${file.name}`;
     uploadBtn.disabled = false;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      preview.src = e.target.result;
-      previewContainer.classList.remove('hidden');
-    };
-    reader.readAsDataURL(file);
+    status.innerHTML = '';
   }
 
   document.getElementById('uploadForm').addEventListener('submit', async (e) => {
@@ -112,7 +99,7 @@
     }
 
     uploadBtn.disabled = true;
-    status.innerHTML = '<span class="text-blue-600">Uploading...</span>';
+    status.innerHTML = '<span class="text-blue-600">📊 Analyzing keypoints...</span>';
 
     const formData = new FormData();
     formData.append('video', file);
@@ -127,13 +114,12 @@
 
       if (data.success) {
         status.innerHTML = `
-          <span class="text-green-600 text-2xl font-bold">✓ Video uploaded successfully!</span><br>
+          <span class="text-green-600 text-2xl font-bold">Keypoints analyzed successfully!</span><br>
           <p class="mt-4 text-gray-700">Translation: "${data.translation}"</p>
           <p class="mt-4"><a href="{{ history_url }}" class="text-[#073a3b] font-semibold underline">View Conversation History →</a></p>
         `;
         videoInput.value = '';
         fileName.textContent = '';
-        previewContainer.classList.add('hidden');
       } else {
         status.innerHTML = `<span class="text-red-600">${data.error || 'Upload failed'}</span>`;
       }

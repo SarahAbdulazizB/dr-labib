@@ -321,6 +321,13 @@ def patient(doctor_id):
         flash('Could not load doctor', 'danger')
         return redirect(url_for('dashboard.select_doctor'))
 
+# app/routes.py - SPECIFIC CHANGES ONLY
+
+# ============================================================
+# CHANGE 1: Replace the entire @dashboard.route('/upload_video')
+# ============================================================
+# Find and replace this entire function:
+
 @dashboard.route('/upload_video', methods=['POST'])
 @login_required
 @patient_only
@@ -331,30 +338,44 @@ def upload_video():
         return {"success": False, "error": "Please select a doctor first"}, 400
     
     if 'video' not in request.files:
-        return {"success": False, "error": "No video uploaded"}, 400
+        return {"success": False, "error": "No keypoint file uploaded"}, 400
     
-    video = request.files['video']
+    file = request.files['video']
     
-    if video.filename == '':
+    if file.filename == '':
         return {"success": False, "error": "No file selected"}, 400
     
-    video.seek(0, os.SEEK_END)
-    file_size = video.tell()
-    video.seek(0)
+    # Validate file extension is .npy
+    if not file.filename.endswith('.npy'):
+        return {"success": False, "error": "Only .npy keypoint files allowed"}, 400
     
-    if file_size > 10 * 1024 * 1024:
-        return {"success": False, "error": "File too large (max 10MB)"}, 400
+    # Check file size (npy files should be < 1MB)
+    file.seek(0, os.SEEK_END)
+    file_size = file.tell()
+    file.seek(0)
+    
+    if file_size > 1 * 1024 * 1024:  # 1MB max
+        return {"success": False, "error": "File too large (max 1MB)"}, 400
     
     try:
-        filename = f"patient_{current_user.id}_{int(time.time())}.webm"
+        # Create unique filename
+        filename = f"patient_{current_user.id}_{int(time.time())}.npy"
         upload_folder = os.path.join('app', 'static', 'uploads', 'signs_videos')
         
         os.makedirs(upload_folder, exist_ok=True)
         filepath = os.path.join(upload_folder, filename)
-        video.save(filepath)
+        file.save(filepath)
         
+        # Call model translation
         from app.ml_model import model
-        translated_text = model.translate_video(filepath)
+        success, result = model.translate_video(filepath)
+        
+        if not success:
+            # result is error message
+            return {"success": False, "error": result}, 400
+        
+        # result is translated text
+        translated_text = result
         
         conn = get_db_connection()
         if not conn:
@@ -370,7 +391,7 @@ def upload_video():
             if not doctor or doctor[1] != 'doctor':
                 return {"success": False, "error": "Invalid doctor selected"}, 400
             
-            # Create conversation record (metadata only)
+            # Create conversation record
             cursor.execute("""
                 INSERT INTO conversations 
                 (patient_id, doctor_id, status, timestamp, updated_at)
@@ -379,7 +400,7 @@ def upload_video():
             conn.commit()
             conversation_id = cursor.lastrowid
             
-            # Create the initial message in messages table
+            # Create the initial message with translated text
             cursor.execute("""
                 INSERT INTO messages 
                 (conversation_id, sender_id, sender_role, message_type, video_path, translated_text, timestamp)
@@ -406,7 +427,8 @@ def upload_video():
             
     except Exception as e:
         print(f"Upload error: {e}")
-        return {"success": False, "error": str(e)}, 500
+        return {"success": False, "error": f"Upload failed: {str(e)}"}, 500
+
 
 otp_storage = {}
 
